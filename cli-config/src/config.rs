@@ -32,7 +32,7 @@ pub struct Config {
     /// Typical values for mainnet, devnet, and testnet are [described in the
     /// Solana documentation][rpcdocs].
     ///
-    /// For local testing, the typical value is `http://localhost:8899`.
+    /// For local testing, the typical value is `http://127.0.0.1:8899`.
     ///
     /// [rpcdocs]: https://docs.solana.com/cluster/rpc-endpoints
     pub json_rpc_url: String,

@@ -720,7 +720,7 @@ pub fn process_catchup(
     progress_bar.set_message("Connecting...");
 
     if let Some(our_localhost_port) = our_localhost_port {
-        let gussed_default = Some(format!("http://localhost:{}", our_localhost_port));
+        let gussed_default = Some(format!("http://127.0.0.1:{}", our_localhost_port));
         if node_json_rpc_url.is_some() && node_json_rpc_url != gussed_default {
             // go to new line to leave this message on console
             println!(
