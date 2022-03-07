@@ -3,15 +3,13 @@
 /// In addition, the dynamic library must export a "C" function _create_plugin which
 /// creates the implementation of the plugin.
 use {
-    solana_sdk::{signature::Signature, transaction::SanitizedTransaction},
-    solana_transaction_status::TransactionStatusMeta,
+    solana_sdk::{clock::UnixTimestamp, signature::Signature, transaction::SanitizedTransaction},
+    solana_transaction_status::{Reward, TransactionStatusMeta},
     std::{any::Any, error, io},
     thiserror::Error,
 };
 
-impl Eq for ReplicaAccountInfo<'_> {}
-
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 /// Information about an account being updated
 pub struct ReplicaAccountInfo<'a> {
     /// The Pubkey for the account
@@ -48,16 +46,41 @@ pub enum ReplicaAccountInfoVersions<'a> {
     V0_0_1(&'a ReplicaAccountInfo<'a>),
 }
 
+/// Information about a transaction
 #[derive(Clone, Debug)]
 pub struct ReplicaTransactionInfo<'a> {
+    /// The first signature of the transaction, used for identifying the transaction.
     pub signature: &'a Signature,
+
+    /// Indicates if the transaction is a simple vote transaction.
     pub is_vote: bool,
+
+    /// The sanitized transaction.
     pub transaction: &'a SanitizedTransaction,
+
+    /// Metadata of the transaction status.
     pub transaction_status_meta: &'a TransactionStatusMeta,
 }
 
+/// A wrapper to future-proof ReplicaTransactionInfo handling.
+/// If there were a change to the structure of ReplicaTransactionInfo,
+/// there would be new enum entry for the newer version, forcing
+/// plugin implementations to handle the change.
 pub enum ReplicaTransactionInfoVersions<'a> {
     V0_0_1(&'a ReplicaTransactionInfo<'a>),
+}
+
+#[derive(Clone, Debug)]
+pub struct ReplicaBlockInfo<'a> {
+    pub slot: u64,
+    pub blockhash: &'a str,
+    pub rewards: &'a [Reward],
+    pub block_time: Option<UnixTimestamp>,
+    pub block_height: Option<u64>,
+}
+
+pub enum ReplicaBlockInfoVersions<'a> {
+    V0_0_1(&'a ReplicaBlockInfo<'a>),
 }
 
 /// Errors returned by plugin calls
@@ -87,7 +110,7 @@ pub enum AccountsDbPluginError {
 }
 
 /// The current status of a slot
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SlotStatus {
     /// The highest slot of the heaviest fork processed by the node. Ledger state at this slot is
     /// not derived from a confirmed or finalized block, but if multiple forks are present, is from
@@ -170,6 +193,12 @@ pub trait AccountsDbPlugin: Any + Send + Sync + std::fmt::Debug {
         transaction: ReplicaTransactionInfoVersions,
         slot: u64,
     ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Called when block's metadata is updated.
+    #[allow(unused_variables)]
+    fn notify_block_metadata(&mut self, blockinfo: ReplicaBlockInfoVersions) -> Result<()> {
         Ok(())
     }
 

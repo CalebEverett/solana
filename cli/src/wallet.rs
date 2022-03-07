@@ -39,7 +39,7 @@ use {
         system_program,
         transaction::Transaction,
     },
-    solana_transaction_status::{EncodedTransaction, UiTransactionEncoding},
+    solana_transaction_status::{Encodable, EncodedTransaction, UiTransactionEncoding},
     std::{fmt::Write as FmtWrite, fs::File, io::Write, sync::Arc},
 };
 
@@ -273,11 +273,14 @@ impl WalletSubCommands for App<'_, '_> {
 }
 
 fn resolve_derived_address_program_id(matches: &ArgMatches<'_>, arg_name: &str) -> Option<Pubkey> {
-    matches.value_of(arg_name).and_then(|v| match v {
-        "NONCE" => Some(system_program::id()),
-        "STAKE" => Some(stake::program::id()),
-        "VOTE" => Some(solana_vote_program::id()),
-        _ => pubkey_of(matches, arg_name),
+    matches.value_of(arg_name).and_then(|v| {
+        let upper = v.to_ascii_uppercase();
+        match upper.as_str() {
+            "NONCE" | "SYSTEM" => Some(system_program::id()),
+            "STAKE" => Some(stake::program::id()),
+            "VOTE" => Some(solana_vote_program::id()),
+            _ => pubkey_of(matches, arg_name),
+        }
     })
 }
 
@@ -564,10 +567,8 @@ pub fn process_confirm(
                                 .transaction
                                 .decode()
                                 .expect("Successful decode");
-                            let json_transaction = EncodedTransaction::encode(
-                                decoded_transaction.clone(),
-                                UiTransactionEncoding::Json,
-                            );
+                            let json_transaction =
+                                decoded_transaction.encode(UiTransactionEncoding::Json);
 
                             transaction = Some(CliTransaction {
                                 transaction: json_transaction,
@@ -609,7 +610,7 @@ pub fn process_decode_transaction(config: &CliConfig, transaction: &Transaction)
     let sigverify_status = CliSignatureVerificationStatus::verify_transaction(transaction);
     let decode_transaction = CliTransaction {
         decoded_transaction: transaction.clone(),
-        transaction: EncodedTransaction::encode(transaction.clone(), UiTransactionEncoding::Json),
+        transaction: transaction.encode(UiTransactionEncoding::Json),
         meta: None,
         block_time: None,
         slot: None,

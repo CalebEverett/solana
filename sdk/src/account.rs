@@ -103,6 +103,12 @@ pub trait WritableAccount: ReadableAccount {
         );
         Ok(())
     }
+    fn saturating_add_lamports(&mut self, lamports: u64) {
+        self.set_lamports(self.lamports().saturating_add(lamports))
+    }
+    fn saturating_sub_lamports(&mut self, lamports: u64) {
+        self.set_lamports(self.lamports().saturating_sub(lamports))
+    }
     fn data_mut(&mut self) -> &mut Vec<u8>;
     fn data_as_mut_slice(&mut self) -> &mut [u8];
     fn set_owner(&mut self, owner: Pubkey);
@@ -320,6 +326,21 @@ fn shared_new<T: WritableAccount>(lamports: u64, space: usize, owner: &Pubkey) -
     )
 }
 
+fn shared_new_rent_epoch<T: WritableAccount>(
+    lamports: u64,
+    space: usize,
+    owner: &Pubkey,
+    rent_epoch: Epoch,
+) -> T {
+    T::create(
+        lamports,
+        vec![0u8; space],
+        *owner,
+        bool::default(),
+        rent_epoch,
+    )
+}
+
 fn shared_new_ref<T: WritableAccount>(
     lamports: u64,
     space: usize,
@@ -428,6 +449,9 @@ impl Account {
     ) -> Result<RefCell<Self>, bincode::Error> {
         shared_new_ref_data_with_space(lamports, state, space, owner)
     }
+    pub fn new_rent_epoch(lamports: u64, space: usize, owner: &Pubkey, rent_epoch: Epoch) -> Self {
+        shared_new_rent_epoch(lamports, space, owner, rent_epoch)
+    }
     pub fn deserialize_data<T: serde::de::DeserializeOwned>(&self) -> Result<T, bincode::Error> {
         shared_deserialize_data(self)
     }
@@ -483,6 +507,9 @@ impl AccountSharedData {
         owner: &Pubkey,
     ) -> Result<RefCell<Self>, bincode::Error> {
         shared_new_ref_data_with_space(lamports, state, space, owner)
+    }
+    pub fn new_rent_epoch(lamports: u64, space: usize, owner: &Pubkey, rent_epoch: Epoch) -> Self {
+        shared_new_rent_epoch(lamports, space, owner, rent_epoch)
     }
     pub fn deserialize_data<T: serde::de::DeserializeOwned>(&self) -> Result<T, bincode::Error> {
         shared_deserialize_data(self)
@@ -798,6 +825,28 @@ pub mod tests {
         let key = Pubkey::new_unique();
         let (_account1, mut account2) = make_two_accounts(&key);
         account2.checked_sub_lamports(u64::MAX).unwrap();
+    }
+
+    #[test]
+    fn test_account_saturating_add_lamports() {
+        let key = Pubkey::new_unique();
+        let (mut account, _) = make_two_accounts(&key);
+
+        let remaining = 22;
+        account.set_lamports(u64::MAX - remaining);
+        account.saturating_add_lamports(remaining * 2);
+        assert_eq!(account.lamports(), u64::MAX);
+    }
+
+    #[test]
+    fn test_account_saturating_sub_lamports() {
+        let key = Pubkey::new_unique();
+        let (mut account, _) = make_two_accounts(&key);
+
+        let remaining = 33;
+        account.set_lamports(remaining);
+        account.saturating_sub_lamports(remaining * 2);
+        assert_eq!(account.lamports(), 0);
     }
 
     #[test]

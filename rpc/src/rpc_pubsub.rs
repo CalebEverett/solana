@@ -594,6 +594,7 @@ mod tests {
                 create_genesis_config, create_genesis_config_with_vote_accounts, GenesisConfigInfo,
                 ValidatorVoteKeypairs,
             },
+            vote_transaction::VoteTransaction,
         },
         solana_sdk::{
             account::ReadableAccount,
@@ -807,7 +808,7 @@ mod tests {
         let expected: Response = serde_json::from_str(expected).unwrap();
 
         let result: Response = serde_json::from_str(&res.unwrap()).unwrap();
-        assert_eq!(expected, result);
+        assert_eq!(result, expected);
 
         // Test bad parameter
         let req = r#"{"jsonrpc":"2.0","id":1,"method":"signatureUnsubscribe","params":[1]}"#;
@@ -816,7 +817,7 @@ mod tests {
         let expected: Response = serde_json::from_str(expected).unwrap();
 
         let result: Response = serde_json::from_str(&res.unwrap()).unwrap();
-        assert_eq!(expected, result);
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -1070,7 +1071,7 @@ mod tests {
         let expected: Response = serde_json::from_str(expected).unwrap();
 
         let result: Response = serde_json::from_str(&res.unwrap()).unwrap();
-        assert_eq!(expected, result);
+        assert_eq!(result, expected);
 
         // Test bad parameter
         let req = r#"{"jsonrpc":"2.0","id":1,"method":"accountUnsubscribe","params":[1]}"#;
@@ -1079,7 +1080,7 @@ mod tests {
         let expected: Response = serde_json::from_str(expected).unwrap();
 
         let result: Response = serde_json::from_str(&res.unwrap()).unwrap();
-        assert_eq!(expected, result);
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -1315,12 +1316,12 @@ mod tests {
             hash: Hash::default(),
             timestamp: None,
         };
-        subscriptions.notify_vote(Box::new(vote));
+        subscriptions.notify_vote(Pubkey::default(), VoteTransaction::from(vote));
 
         let response = receiver.recv();
         assert_eq!(
             response,
-            r#"{"jsonrpc":"2.0","method":"voteNotification","params":{"result":{"slots":[1,2],"hash":"11111111111111111111111111111111","timestamp":null},"subscription":0}}"#
+            r#"{"jsonrpc":"2.0","method":"voteNotification","params":{"result":{"votePubkey":"11111111111111111111111111111111","slots":[1,2],"hash":"11111111111111111111111111111111","timestamp":null},"subscription":0}}"#
         );
     }
 
